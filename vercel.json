@@ -13,8 +13,5 @@
       "src": "/(.*)",
       "dest": "/index.js"
     }
-  ],
-  "env": {
-    "API_KEY": "@pdf_service_api_key"
-  }
+  ]
 } 
