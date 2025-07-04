@@ -1,22 +1,19 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "index.js",
-      "use": "@vercel/node"
+  "functions": {
+    "api/extract.js": {
+      "maxDuration": 120
+    },
+    "api/*.js": {
+      "runtime": "@vercel/node"
     }
-  ],
+  },
   "routes": [
     {
       "src": "/(.*)",
       "dest": "/index.js"
     }
   ],
-  "functions": {
-    "api/extract.js": {
-      "maxDuration": 120
-    }
-  },
   "env": {
     "API_KEY": "@pdf_service_api_key"
   }
