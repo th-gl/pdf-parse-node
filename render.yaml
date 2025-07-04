@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: pdf-extractor-service
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: API_KEY
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: PORT
+        value: 10000
+      - key: NODE_ENV
+        value: production
+      # Add timeout settings
+      - key: REQUEST_TIMEOUT
+        value: 300000
+      - key: KEEP_ALIVE_TIMEOUT
+        value: 65000
+    # Health check endpoint
+    healthCheckPath: /health
+    # Auto-deploy settings
+    autoDeploy: true
+    # Disk space for temporary files
+    disk:
+      name: pdf-temp
+      mountPath: /tmp
+      sizeGB: 1
