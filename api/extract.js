@@ -1,56 +1,12 @@
+const express = require('express');
 const { processDocument } = require('../lib/pdfProcessor');
-
-// Authentication middleware function
-const authenticateRequest = (req) => {
-  const authHeader = req.headers.authorization;
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return { error: 'UNAUTHORIZED', message: 'Missing or invalid authorization token' };
-  }
-
-  const token = authHeader.split(' ')[1];
-  
-  if (token !== process.env.API_KEY) {
-    return { error: 'FORBIDDEN', message: 'Invalid API key' };
-  }
-  
-  return null; // No error
-};
+const router = express.Router();
 
 /**
- * Extract text from a document - Vercel serverless function
+ * Extract text from a document
  */
-module.exports = async (req, res) => {
-  // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  
-  // Handle preflight OPTIONS request
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-  
-  // Only allow POST requests
-  if (req.method !== 'POST') {
-    return res.status(405).json({
-      success: false,
-      error: 'METHOD_NOT_ALLOWED',
-      message: 'Only POST requests are allowed'
-    });
-  }
-  
+router.post('/', async (req, res, next) => {
   try {
-    // Authenticate request
-    const authError = authenticateRequest(req);
-    if (authError) {
-      return res.status(authError.error === 'UNAUTHORIZED' ? 401 : 403).json({
-        success: false,
-        error: authError.error,
-        message: authError.message
-      });
-    }
-    
     // Validate request body
     const { cloudinaryUrl, documentId, filename, fileType, enableOCR = true } = req.body;
     
@@ -128,12 +84,19 @@ module.exports = async (req, res) => {
   } catch (error) {
     console.error('Error processing document:', error);
     
-    // Return error response
-    return res.status(error.status || 500).json({
-      success: false,
-      error: error.code || 'EXTRACTION_FAILED',
-      message: error.message || 'Failed to extract text from document',
-      fallbackSuggestion: 'Try again later or contact support'
+    // If it's an already formatted error, pass it to the error handler
+    if (error.code && error.status) {
+      return next(error);
+    }
+    
+    // Otherwise, create a generic error
+    next({
+      code: 'EXTRACTION_FAILED',
+      message: 'Failed to extract text from document',
+      status: 500,
+      originalError: error.message
     });
   }
-}; 
+});
+
+module.exports = router; 
