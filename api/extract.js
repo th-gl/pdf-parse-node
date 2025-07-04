@@ -28,22 +28,59 @@ router.post('/', async (req, res, next) => {
     
     console.log(`Processing document ID: ${documentId}, URL: ${cloudinaryUrl}`);
     
-    // Process the document
-    const { text, metadata } = await processDocument(cloudinaryUrl, {
-      enableOCR,
-      documentId,
-      filename
-    });
+    // Detect if this is likely a PDF uploaded to Cloudinary
+    const isPdfFile = filename?.toLowerCase().endsWith('.pdf') || fileType?.toLowerCase() === 'pdf';
     
-    // Return the extracted text with metadata
-    return res.json({
-      success: true,
-      data: {
+    // Process the document
+    try {
+      // Set process options
+      const processOptions = {
+        enableOCR,
         documentId,
-        extractedText: text,
-        metadata
+        filename,
+        // If file has PDF extension or type but Cloudinary might have converted it
+        forcePdfMode: isPdfFile, 
+        skipPdfValidation: isPdfFile
+      };
+      
+      const { text, metadata } = await processDocument(cloudinaryUrl, processOptions);
+      
+      // Return the extracted text with metadata
+      return res.json({
+        success: true,
+        data: {
+          documentId,
+          extractedText: text,
+          metadata
+        }
+      });
+    } catch (error) {
+      // Special handling for images detected as PDFs
+      if (error.code === 'UNSUPPORTED_FILE_TYPE' && 
+          error.message.includes('image/') && 
+          isPdfFile) {
+        console.log('File detected as image but has PDF extension, using OCR directly...');
+        
+        const { text, metadata } = await processDocument(cloudinaryUrl, {
+          enableOCR: true, // Force OCR
+          documentId,
+          filename,
+          useDirectOcr: true // Special flag to use OCR directly
+        });
+        
+        return res.json({
+          success: true,
+          data: {
+            documentId,
+            extractedText: text,
+            metadata,
+            note: 'File was processed with OCR as it was detected as an image'
+          }
+        });
       }
-    });
+      
+      throw error;
+    }
   } catch (error) {
     console.error('Error processing document:', error);
     
